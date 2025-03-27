@@ -69,7 +69,7 @@ It is recommended that EC files be managed at external storage.
 #### Step-2 Add Broadcast Code
 The Broadcast to trigger coverage dump of Jacoco.
 
-Refer to `CoverageBroadcast.java`
+Refer to [CoverageBroadcast.java](./java_class/CoverageBroadcast.java)
 
 <br/>
 
@@ -92,6 +92,7 @@ Let the app dump coverage automatically to reduce coverage data loss.
 Find the application class and add:
 
 ```java
+# Java Version
 @Override
 public void onTrimMemory(int level) {
     Log.d("CoverageJacoco", "Application onTrimMemory!");
@@ -101,6 +102,7 @@ public void onTrimMemory(int level) {
 ```
 
 ```kotlin
+# Kotlin Version
 override fun onTrimMemory(level: Int) {
     Log.d("CoverageJacoco", "Application onTrimMemory!")
     CoverageBroadcast.dumpCoverageData(this, "trim", false)
@@ -113,7 +115,7 @@ override fun onTrimMemory(level: Int) {
 #### Step-5 Add Root Gradle Script
 Add a Gradle script to the project root to find all Android subprojects and config Jacoco automatically.
 
-Refer to `root_jacoco.gradle`
+Refer to [root_jacoco.gradle](./gradle_scripts/root_jacoco.gradle)
 
 <br/>
 
@@ -133,7 +135,7 @@ apply from: 'root_jacoco.gradle'
 #### Step-7 Add App Gradle Script
 Add a Gradle script to the app module for Jacoco report generation.
 
-Refer to `app_jacoco.gradle`
+Refer to [app_jacoco.gradle](./gradle_scripts/app_jacoco.gradle)
 
 <br/>
 
