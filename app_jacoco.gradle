@@ -1,0 +1,63 @@
+
+/*
+ * @Time    : 2025 Jan
+ * @Author  : Yuanhong Lan
+ */
+
+import groovy.json.JsonSlurper
+
+File ecDir = new File("$project.buildDir/outputs/code-coverage/")
+if (!ecDir.exists()) {
+    ecDir.mkdirs()
+}
+
+def coverageSourceDirs = []
+def coverageClassDirs = []
+
+def json_file = new File("$rootDir/coverageDirs.json")
+if (json_file.exists()) {
+    def jsonSlurper = new JsonSlurper()
+    def coverageData = jsonSlurper.parse(json_file)
+
+    coverageSourceDirs = coverageData.sourceDirs
+    coverageClassDirs = coverageData.classDirs
+}
+
+println("Loaded ${coverageSourceDirs.size()} coverageSourceDirs, ${coverageClassDirs.size()} coverageClassDirs")
+
+task jacocoTestReport(type: JacocoReport) {
+    doFirst {
+        coverageClassDirs.each { path ->
+            new File(path).eachFileRecurse { file ->
+                if (file.name.contains('$$')) {
+                    file.renameTo(file.path.replace('$$', '$'))
+                }
+            }
+        }
+        println("For Jacoco report: ${coverageSourceDirs.size()} coverageSourceDirs, ${coverageClassDirs.size()} coverageClassDirs")
+    }
+
+    group = "JacocoReport"
+    description = "Generate Jacoco coverage reports after running tests."
+
+    reports {
+        xml.required = true
+        html.required = true
+    }
+
+    classDirectories.from = files(files(coverageClassDirs).files.collect {
+        fileTree(dir: it, excludes: [
+            '**/R.class',
+            '**/R$*.class',
+            '**/BuildConfig.*',
+            '**/Manifest*.*',
+            '**/*Test*.*',
+            'android/**/*.*',
+            '**/*$[0-9].*',
+        ])
+    })
+
+    sourceDirectories.from = files(coverageSourceDirs)
+
+    executionData.from = files(ecDir.listFiles())
+}
