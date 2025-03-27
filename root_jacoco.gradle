@@ -1,0 +1,116 @@
+/*
+ * @Time    : 2025 Jan
+ * @Author  : Yuanhong Lan
+ */
+
+static def is_android_project(project){
+    return project.hasProperty('android')
+}
+
+subprojects { project ->
+    project.afterEvaluate {
+        println("Subproject: ${project.name}")
+        if (is_android_project(project)) {
+            apply plugin: "jacoco"
+
+            project.android {
+                println("Enable test coverage for ${project.name}.")
+                buildTypes {
+                    debug {
+                        minifyEnabled = false
+                        testCoverageEnabled = true
+                    }
+                }
+            }
+        }
+    }
+}
+
+import groovy.json.JsonOutput
+
+def coverageSourceDirs = []
+def coverageClassDirs = []
+
+def add_items(project, currentVariant, coverageSourceDirs, coverageClassDirs) {
+    println("Configuring Jacoco dirs for: ${project.name}, ${currentVariant.name}")
+
+    def flavorName = currentVariant.flavorName ?: ""
+    def buildType = currentVariant.buildType.name ?: ""
+    def fullVariantName = currentVariant.name
+
+    def temp_src_paths = [
+            "${project.projectDir}/src/main/java",
+            "${project.projectDir}/src/main/kotlin",
+            "${project.projectDir}/src/${fullVariantName}/java",
+            "${project.projectDir}/src/${fullVariantName}/kotlin",
+    ]
+
+    if (flavorName != "") {
+        temp_src_paths.add("${project.projectDir}/src/${flavorName}/java")
+        temp_src_paths.add("${project.projectDir}/src/${flavorName}/kotlin")
+    }
+
+    if (buildType != "") {
+        temp_src_paths.add("${project.projectDir}/src/${buildType}/java")
+        temp_src_paths.add("${project.projectDir}/src/${buildType}/kotlin")
+    }
+
+    temp_src_paths.each {
+        if ((new File(it).exists()) && (!coverageSourceDirs.contains(it))) {
+            coverageSourceDirs.add(it)
+        }
+    }
+
+    def temp_cls_paths = [
+            "${project.buildDir}/intermediates/javac/${fullVariantName}",
+            "${project.buildDir}/tmp/kotlin-classes/${fullVariantName}",
+    ]
+
+    temp_cls_paths.each {
+        if ((new File(it).exists()) && (!coverageClassDirs.contains(it))) {
+            coverageClassDirs.add(it)
+        }
+    }
+
+    println("Current ${coverageSourceDirs.size()} coverageSourceDirs, ${coverageClassDirs.size()} coverageClassDirs")
+}
+
+
+task saveCoverageDirs {
+    doFirst {
+        subprojects { project ->
+            println("Subproject: ${project.name}")
+            if (is_android_project(project)) {
+                project.android {
+                    def variants = null
+
+                    if (it.hasProperty("applicationVariants")) {
+                        variants = it.applicationVariants
+                    } else {
+                        if (it.hasProperty("libraryVariants")) {
+                            variants = it.libraryVariants
+                        }
+                    }
+
+                    variants?.all { variant ->
+                        if (variant.name.toLowerCase().endsWith("debug")) {
+                            add_items(project, variant, coverageSourceDirs, coverageClassDirs)
+                        }
+                    }
+
+                    println()
+                }
+            }
+        }
+    }
+
+    doLast {
+        def coverageData = [
+                sourceDirs: coverageSourceDirs,
+                classDirs: coverageClassDirs
+        ]
+        def file = new File("$rootDir/coverageDirs.json")
+        file.text = JsonOutput.toJson(coverageData)
+        println("Saved coverage directories to ${file.absolutePath}")
+    }
+}
