@@ -24,7 +24,7 @@ Since the components associated with Android apps are so numerous and change so 
 + Gradle 7 and 7-: The main idea is the same, but some changes are required. For example, you may need to include Jacoco explicitly.
 
 #### Android
-+ Tested on Android 9、13
++ Tested on Android 9、Android13、Android14
 + As the Android version grows, there are more and more limitations to App Permissions
 
 #### App
