@@ -35,7 +35,7 @@ def add_items(project, currentVariant, coverageSourceDirs, coverageClassDirs) {
     println("Configuring Jacoco dirs for: ${project.name}, ${currentVariant.name}")
 
     def flavorName = currentVariant.flavorName ?: ""
-    def buildType = currentVariant.buildType ?: ""
+    def buildType = currentVariant.buildType.name ?: ""
     def fullVariantName = currentVariant.name
 
     def temp_src_paths = [
@@ -76,31 +76,40 @@ def add_items(project, currentVariant, coverageSourceDirs, coverageClassDirs) {
 }
 
 
-subprojects {
-    afterEvaluate {
-        if (it.plugins.hasPlugin('com.android.application') || it.plugins.hasPlugin('com.android.library')) {
-            println "Found Android module: ${it.name}"
-            androidComponents {
-                onVariants(selector().all(), { variant ->
-                    println("Found variant: ${variant.name}")
-                    if (variant.name.toLowerCase().endsWith("debug")) {
-                        add_items(project, variant, coverageSourceDirs, coverageClassDirs)
+task saveCoverageDirs {
+    doFirst {
+        subprojects { project ->
+            println("Subproject: ${project.name}")
+            if (is_android_project(project)) {
+                project.android {
+                    def variants = null
+
+                    if (it.hasProperty("applicationVariants")) {
+                        variants = it.applicationVariants
+                    } else {
+                        if (it.hasProperty("libraryVariants")) {
+                            variants = it.libraryVariants
+                        }
                     }
-                })
+
+                    variants?.all { variant ->
+                        if (variant.name.toLowerCase().endsWith("debug")) {
+                            add_items(project, variant, coverageSourceDirs, coverageClassDirs)
+                        }
+                    }
+
+                    println()
+                }
             }
         }
     }
-}
 
-
-tasks.register('saveCoverageDirs') {
-    def root_dir = project.rootDir.toString()
     doLast {
         def coverageData = [
                 sourceDirs: coverageSourceDirs,
                 classDirs: coverageClassDirs
         ]
-        def file = new File("$root_dir/coverageDirs.json")
+        def file = new File("$rootDir/coverageDirs.json")
         file.text = JsonOutput.toJson(coverageData)
         println("Saved coverage directories to ${file.absolutePath}")
     }
